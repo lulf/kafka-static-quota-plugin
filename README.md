@@ -1,7 +1,7 @@
 # Kafka Static Quota Plugin
 
 This is a broker quota plugin for Apache Kafka to allow setting a per-broker limits statically in
-configuration. The quota plugin ignores client ids, users etc, and applies quota across all clients.
+configuration. The quota plugin assigns a shared quota across all client ids and users.
 
 To build the plugin:
 

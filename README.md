@@ -18,7 +18,7 @@ client.quota.callback.class=org.apache.kafka.server.quota.StaticQuotaCallback
 broker.quota=1000000
 ```
 
-The quota is given in bytes, and will translate to bytes/sec for your producer for instance.
+The quota is given in bytes, and will translate to bytes/sec in total for your clients for instance.
 
 ## Testing locally
 

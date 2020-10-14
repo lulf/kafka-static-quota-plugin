@@ -31,25 +31,31 @@ class StaticQuotaCallback extends ClientQuotaCallback {
   @volatile private var quota: Quota = null
 
   override def configure(configs: util.Map[String, _]): Unit = {
+    // println("Configuring quota callback")
     brokerId = configs.get("broker.id").toString
     val bound = lang.Double.parseDouble(configs.get("broker.quota").toString)
     quota = Quota.upperBound(bound)
   }
 
   override def quotaMetricTags(quotaType: ClientQuotaType, principal: KafkaPrincipal, clientId: String): util.Map[String, String] = {
+   // println("quotaMetricTags. type: " + quotaType + ", principal: " + principal + ", clientId: " + clientId)
+    // Return the same tag for all clients, which will cause throtting to be applied across all of them.
     Collections.singletonMap("broker.id", brokerId)
   }
 
   override def quotaLimit(quotaType: ClientQuotaType, metricTags: util.Map[String, String]): lang.Double = {
+    // println("quotaLimit. type: " + quotaType + ", metricTags: " + metricTags)
     quota.bound
   }
 
   override def updateClusterMetadata(cluster: Cluster): Boolean = false
 
   override def updateQuota(quotaType: ClientQuotaType, entity: ClientQuotaEntity, newValue: Double): Unit = {
+    // println("Update quota. type: " + quotaType + ", entity: " + entity + ", newValue: " + newValue)
   }
 
   override def removeQuota(quotaType: ClientQuotaType, entity: ClientQuotaEntity): Unit = {
+    // println("Remove quota. type: " + quotaType + ", entity: " + entity)
   }
 
   override def quotaResetRequired(quotaType: ClientQuotaType): Boolean = false

@@ -15,15 +15,11 @@
  * limitations under the License.
  */
 package org.apache.kafka.server.quota
-import java.util.Collections
 import java.{lang, util}
 
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.metrics.Quota
 import org.apache.kafka.common.security.auth.KafkaPrincipal
-
-import scala.jdk.CollectionConverters.MapHasAsJava
-
 
 /**
  * Allows configuring a static quota for a broker using configuration.
@@ -42,7 +38,10 @@ class StaticQuotaCallback extends ClientQuotaCallback {
   override def quotaMetricTags(quotaType: ClientQuotaType, principal: KafkaPrincipal, clientId: String): util.Map[String, String] = {
 //    println("quotaMetricTags. type: " + quotaType + ", principal: " + principal + ", clientId: " + clientId)
     // Return the same tag for all clients, which will cause throtting to be applied across all of them.
-    Map("broker.id" -> brokerId, "quota.type" -> quotaType.name()).asJava
+    val m = new util.HashMap[String, String]()
+    m.put("broker.id", brokerId)
+    m.put("quota.type", quotaType.name());
+    m
   }
 
   override def quotaLimit(quotaType: ClientQuotaType, metricTags: util.Map[String, String]): lang.Double = {

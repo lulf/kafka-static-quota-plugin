@@ -18,21 +18,37 @@ package org.apache.kafka.server.quota
 import java.{lang, util}
 
 import org.apache.kafka.common.Cluster
+import org.apache.kafka.common.config.{AbstractConfig, ConfigDef}
 import org.apache.kafka.common.metrics.Quota
 import org.apache.kafka.common.security.auth.KafkaPrincipal
+
+class StaticQuotaConfig(val props: java.util.Map[_, _], doLog: Boolean)
+  extends AbstractConfig(StaticQuotaConfig.configDef, props, doLog) {
+}
 
 /**
  * Allows configuring a static quota for a broker using configuration.
  */
 class StaticQuotaCallback extends ClientQuotaCallback {
   @volatile private var brokerId: String = ""
-  @volatile private var quota: Quota = null
+  @volatile private var quotaMap: util.Map[ClientQuotaType, Quota] = null
 
   override def configure(configs: util.Map[String, _]): Unit = {
     // println("Configuring quota callback")
-    brokerId = configs.get("broker.id").toString
-    val bound = lang.Double.parseDouble(configs.get("broker.quota").toString)
-    quota = Quota.upperBound(bound)
+    val config = new StaticQuotaConfig(configs, true)
+
+    brokerId = config.getString(StaticQuotaConfig.BrokerIdProp)
+
+    val produceBound = config.getDouble(StaticQuotaConfig.ProduceQuotaProp)
+    val fetchBound = config.getDouble(StaticQuotaConfig.FetchQuotaProp)
+    val requestBound = config.getDouble(StaticQuotaConfig.RequestQuotaProp)
+
+    val m = new util.HashMap[ClientQuotaType, Quota]()
+
+    m.put(ClientQuotaType.PRODUCE, Quota.upperBound(produceBound))
+    m.put(ClientQuotaType.FETCH, Quota.upperBound(fetchBound))
+    m.put(ClientQuotaType.REQUEST, Quota.upperBound(requestBound))
+    quotaMap = m
   }
 
   override def quotaMetricTags(quotaType: ClientQuotaType, principal: KafkaPrincipal, clientId: String): util.Map[String, String] = {
@@ -46,7 +62,7 @@ class StaticQuotaCallback extends ClientQuotaCallback {
 
   override def quotaLimit(quotaType: ClientQuotaType, metricTags: util.Map[String, String]): lang.Double = {
     // println("quotaLimit. type: " + quotaType + ", metricTags: " + metricTags)
-    quota.bound
+    quotaMap.getOrDefault(quotaType, Quota.upperBound(Double.MaxValue)).bound()
   }
 
   override def updateClusterMetadata(cluster: Cluster): Boolean = false
@@ -64,3 +80,20 @@ class StaticQuotaCallback extends ClientQuotaCallback {
   override def close(): Unit = {}
 }
 
+object StaticQuotaConfig {
+  val BrokerIdProp = "broker.id"
+  val ProduceQuotaProp = "broker.quota.produce"
+  val FetchQuotaProp = "broker.quota.fetch"
+  val RequestQuotaProp = "broker.quota.request"
+
+  private val configDef = {
+    import ConfigDef.Importance._
+    import ConfigDef.Type._
+
+    new ConfigDef()
+      .define(BrokerIdProp, STRING, HIGH, "Broker id")
+      .define(ProduceQuotaProp, DOUBLE, Double.MaxValue, HIGH, "Produce quota")
+      .define(FetchQuotaProp, DOUBLE, Double.MaxValue, HIGH, "Fetch quota")
+      .define(RequestQuotaProp, DOUBLE, Double.MaxValue, HIGH, "Request quota")
+  }
+}

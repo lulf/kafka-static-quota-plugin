@@ -15,7 +15,8 @@ Configure Kafka to load the plugin and some plugin properties:
 
 ```
 client.quota.callback.class=org.apache.kafka.server.quota.StaticQuotaCallback
-broker.quota=1000000
+broker.quota.produce=1000000
+broker.quota.fetch=1000000
 ```
 
 The quota is given in bytes, and will translate to bytes/sec in total for your clients for instance.

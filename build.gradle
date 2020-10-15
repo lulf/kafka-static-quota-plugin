@@ -21,7 +21,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.scala-lang:scala-library:2.13.3'
+    compileOnly 'org.scala-lang:scala-library:2.13.3'
 
     // Kafka clients for API classes.
     compileOnly group: 'org.apache.kafka', name: 'kafka-clients', version: '2.6.0'

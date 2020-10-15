@@ -42,7 +42,7 @@ class StaticQuotaCallback extends ClientQuotaCallback {
   override def quotaMetricTags(quotaType: ClientQuotaType, principal: KafkaPrincipal, clientId: String): util.Map[String, String] = {
 //    println("quotaMetricTags. type: " + quotaType + ", principal: " + principal + ", clientId: " + clientId)
     // Return the same tag for all clients, which will cause throtting to be applied across all of them.
-    Map("broker.id" -> brokerId, "type" -> quotaType.name()).asJava
+    Map("broker.id" -> brokerId, "quota.type" -> quotaType.name()).asJava
   }
 
   override def quotaLimit(quotaType: ClientQuotaType, metricTags: util.Map[String, String]): lang.Double = {

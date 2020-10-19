@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * Allows configuring generic quotas for a broker independent of users and clients.
  */
-class StaticQuotaCallback implements ClientQuotaCallback {
+public class StaticQuotaCallback implements ClientQuotaCallback {
     private static final Logger log = LoggerFactory.getLogger(StaticQuotaCallback.class);
     private volatile Map<ClientQuotaType, Quota> quotaMap = new HashMap<>();
 

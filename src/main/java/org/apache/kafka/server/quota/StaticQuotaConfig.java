@@ -11,9 +11,9 @@ import static org.apache.kafka.common.config.ConfigDef.Importance.HIGH;
 import static org.apache.kafka.common.config.ConfigDef.Type.DOUBLE;
 
 public class StaticQuotaConfig extends AbstractConfig {
-    private static final String PRODUCE_QUOTA_PROP = "broker.quota.produce";
-    private static final String FETCH_QUOTA_PROP = "broker.quota.fetch";
-    private static final String REQUEST_QUOTA_PROP = "broker.quota.request";
+    private static final String PRODUCE_QUOTA_PROP = "client.quota.callback.static.produce";
+    private static final String FETCH_QUOTA_PROP = "client.quota.callback.static.fetch";
+    private static final String REQUEST_QUOTA_PROP = "client.quota.callback.static.request";
 
     public StaticQuotaConfig(Map<String, ?> props, boolean doLog) {
         super(new ConfigDef()

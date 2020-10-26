@@ -13,6 +13,9 @@ plugins {
     id 'idea'
 }
 
+sourceCompatibility = 11
+targetCompatibility = 11
+
 repositories {
     // Use jcenter for resolving dependencies.
     // You can declare any Maven/Ivy/file repository here.
@@ -21,7 +24,7 @@ repositories {
 
 dependencies {
     // Kafka clients for API classes.
-    compileOnly group: 'org.apache.kafka', name: 'kafka-clients', version: '2.5.0'
+    compileOnly group: 'org.apache.kafka', name: 'kafka-clients', version: '2.6.0'
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
 
     // Use JUnit Jupiter API for testing.

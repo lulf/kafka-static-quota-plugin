@@ -22,7 +22,8 @@ public class StaticQuotaConfig extends AbstractConfig {
     private static final String PRODUCE_QUOTA_PROP = "client.quota.callback.static.produce";
     private static final String FETCH_QUOTA_PROP = "client.quota.callback.static.fetch";
     private static final String REQUEST_QUOTA_PROP = "client.quota.callback.static.request";
-    private static final String STORAGE_QUOTA_PROP = "client.quota.callback.static.storage";
+    private static final String STORAGE_QUOTA_SOFT_PROP = "client.quota.callback.static.storage.soft";
+    private static final String STORAGE_QUOTA_HARD_PROP = "client.quota.callback.static.storage.hard";
     private static final String STORAGE_CHECK_INTERVAL_PROP = "client.quota.callback.static.storage.check-interval";
     private static final String LOG_DIRS_PROP = "log.dirs";
 
@@ -31,7 +32,8 @@ public class StaticQuotaConfig extends AbstractConfig {
                         .define(PRODUCE_QUOTA_PROP, DOUBLE, Double.MAX_VALUE, HIGH, "Produce bandwidth rate quota (in bytes)")
                         .define(FETCH_QUOTA_PROP, DOUBLE, Double.MAX_VALUE, HIGH, "Consume bandwidth rate quota (in bytes)")
                         .define(REQUEST_QUOTA_PROP, DOUBLE, Double.MAX_VALUE, HIGH, "Request processing time quota (in seconds)")
-                        .define(STORAGE_QUOTA_PROP, LONG, Long.MAX_VALUE, HIGH, "Max amount of storage allowed (in bytes)")
+                        .define(STORAGE_QUOTA_SOFT_PROP, LONG, Long.MAX_VALUE, HIGH, "Hard limit for amount of storage allowed (in bytes)")
+                        .define(STORAGE_QUOTA_HARD_PROP, LONG, Long.MAX_VALUE, HIGH, "Soft limit for amount of storage allowed (in bytes)")
                         .define(STORAGE_CHECK_INTERVAL_PROP, INT, 0, MEDIUM, "Interval between storage check runs (default of 0 means disabled")
                         .define(LOG_DIRS_PROP, STRING, "/tmp/kafka-logs", HIGH, "Broker log directory"),
                 props,
@@ -51,8 +53,12 @@ public class StaticQuotaConfig extends AbstractConfig {
         return m;
     }
 
-    long getStorageQuota() {
-        return getLong(STORAGE_QUOTA_PROP);
+    long getHardStorageQuota() {
+        return getLong(STORAGE_QUOTA_HARD_PROP);
+    }
+
+    long getSoftStorageQuota() {
+        return getLong(STORAGE_QUOTA_SOFT_PROP);
     }
 
     int getStorageCheckInterval() {

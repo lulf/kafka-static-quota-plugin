@@ -18,6 +18,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -28,10 +29,11 @@ public class StaticQuotaCallback implements ClientQuotaCallback {
     private volatile Map<ClientQuotaType, Quota> quotaMap = new HashMap<>();
     private final AtomicLong storageUsed = new AtomicLong(0);
     private volatile String logDirs;
-    private volatile long storageQuota = Long.MAX_VALUE;
+    private volatile long storageQuotaSoft = Long.MAX_VALUE;
+    private volatile long storageQuotaHard = Long.MAX_VALUE;
     private volatile int storageCheckInterval = Integer.MAX_VALUE;
+    private final AtomicBoolean resetQuota = new AtomicBoolean(false);
     private final StorageChecker storageChecker = new StorageChecker();
-    private final Thread storageCheckerThread = new Thread(storageChecker, "storage-quota-checker");
 
     @Override
     public Map<String, String> quotaMetricTags(ClientQuotaType quotaType, KafkaPrincipal principal, String clientId) {
@@ -43,8 +45,14 @@ public class StaticQuotaCallback implements ClientQuotaCallback {
     @Override
     public Double quotaLimit(ClientQuotaType quotaType, Map<String, String> metricTags) {
         // Don't allow producing messages if we're beyond the storage limit.
-        if (ClientQuotaType.PRODUCE.equals(quotaType) && storageUsed.get() > storageQuota) {
-            log.info("Limiting producer limit because disk is full. Used: {}. Actual: {}", storageUsed.get(), storageQuota);
+        long currentStorageUsage = storageUsed.get();
+        if (ClientQuotaType.PRODUCE.equals(quotaType) && currentStorageUsage > storageQuotaSoft && currentStorageUsage < storageQuotaHard) {
+            double minThrottle = quotaMap.getOrDefault(quotaType, Quota.upperBound(Double.MAX_VALUE)).bound();
+            double limit = minThrottle * (1.0 - (1.0 * (currentStorageUsage - storageQuotaSoft) / (storageQuotaHard - storageQuotaSoft)));
+            log.debug("Throttling producer rate because disk is beyond soft limit. Used: {}. Quota: {}", storageUsed, limit);
+            return limit;
+        } else if (ClientQuotaType.PRODUCE.equals(quotaType) && currentStorageUsage >= storageQuotaHard) {
+            log.debug("Limiting producer rate because disk is full. Used: {}. Limit: {}", storageUsed, storageQuotaHard);
             return 1.0;
         }
         return quotaMap.getOrDefault(quotaType, Quota.upperBound(Double.MAX_VALUE)).bound();
@@ -62,7 +70,7 @@ public class StaticQuotaCallback implements ClientQuotaCallback {
 
     @Override
     public boolean quotaResetRequired(ClientQuotaType quotaType) {
-        return false;
+        return resetQuota.getAndSet(true);
     }
 
     @Override
@@ -72,36 +80,54 @@ public class StaticQuotaCallback implements ClientQuotaCallback {
 
     @Override
     public void close() {
-
+        try {
+            storageChecker.stop();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public void configure(Map<String, ?> configs) {
         StaticQuotaConfig config = new StaticQuotaConfig(configs, true);
         quotaMap = config.getQuotaMap();
-        storageQuota = config.getStorageQuota();
+        storageQuotaSoft = config.getSoftStorageQuota();
+        storageQuotaHard = config.getHardStorageQuota();
         storageCheckInterval = config.getStorageCheckInterval();
         logDirs = config.getLogDirs();
 
-        try {
-            storageCheckerThread.interrupt();
-            storageCheckerThread.join();
-            storageCheckerThread.start();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
-        log.info("Configured quota callback with {}. Storage quota: {}. Storage check interval: {}", quotaMap, storageQuota, storageCheckInterval);
+        storageChecker.start();
+        log.info("Configured quota callback with {}. Storage quota (soft, hard): ({}, {}). Storage check interval: {}", quotaMap, storageQuotaSoft, storageQuotaHard, storageCheckInterval);
     }
 
     private class StorageChecker implements Runnable {
+        private final Thread storageCheckerThread = new Thread(this, "storage-quota-checker");
+        private volatile boolean running = false;
+
+        void start() {
+            if (!running) {
+                running = true;
+                storageCheckerThread.start();
+            }
+        }
+
+        void stop() throws InterruptedException {
+            running = false;
+            storageCheckerThread.interrupt();
+            storageCheckerThread.join();
+        }
 
         @Override
         public void run() {
-            if (StaticQuotaCallback.this.logDirs != null && StaticQuotaCallback.this.storageQuota > 0 && StaticQuotaCallback.this.storageCheckInterval > 0) {
-                while (true) {
+            if (StaticQuotaCallback.this.logDirs != null && StaticQuotaCallback.this.storageQuotaSoft > 0 && StaticQuotaCallback.this.storageQuotaHard > 0 && StaticQuotaCallback.this.storageCheckInterval > 0) {
+                while (running) {
                     try {
-                        StaticQuotaCallback.this.storageUsed.set(checkDiskUsage());
+                        long diskUsage = checkDiskUsage();
+                        long previousUsage = StaticQuotaCallback.this.storageUsed.getAndSet(diskUsage);
+                        if (diskUsage != previousUsage) {
+                            StaticQuotaCallback.this.resetQuota.set(true);
+                        }
                         log.debug("Storage usage checked: {}", StaticQuotaCallback.this.storageUsed.get());
                         Thread.sleep(TimeUnit.SECONDS.toMillis(StaticQuotaCallback.this.storageCheckInterval));
                     } catch (InterruptedException e) {

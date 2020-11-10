@@ -44,7 +44,7 @@ public class StaticQuotaCallback implements ClientQuotaCallback {
     public Double quotaLimit(ClientQuotaType quotaType, Map<String, String> metricTags) {
         // Don't allow producing messages if we're beyond the storage limit.
         if (ClientQuotaType.PRODUCE.equals(quotaType) && storageUsed.get() > storageQuota) {
-            log.info("Limting producer limit because disk is full. Used: {}. Actual: {}", storageUsed.get(), storageQuota);
+            log.info("Limiting producer limit because disk is full. Used: {}. Actual: {}", storageUsed.get(), storageQuota);
             return 1.0;
         }
         return quotaMap.getOrDefault(quotaType, Quota.upperBound(Double.MAX_VALUE)).bound();

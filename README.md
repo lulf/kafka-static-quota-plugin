@@ -27,11 +27,19 @@ Configure Kafka to load the plugin and some plugin properties:
 
 ```
 client.quota.callback.class=org.apache.kafka.server.quota.StaticQuotaCallback
+
+# The quota is given in bytes, and will translate to bytes/sec in total for your clients.
 client.quota.callback.static.produce=1000000
 client.quota.callback.static.fetch=1000000
+
+# Storage quota settings in bytes. Clients will be throttled linearly between produce quota and 0
+# after soft limit.
+client.quota.callback.static.storage.soft=10000000
+client.quota.callback.static.storage.hard=20000000
+# Check storage usage every 5 seconds
+client.quota.callback.static.storage.check-interval=5
 ```
 
-The quota is given in bytes, and will translate to bytes/sec in total for your clients.
 
 ## Testing locally
 

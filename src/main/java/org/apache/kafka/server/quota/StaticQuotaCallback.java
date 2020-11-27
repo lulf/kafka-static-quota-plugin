@@ -4,22 +4,22 @@
  */
 package org.apache.kafka.server.quota;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.metrics.Quota;
 import org.apache.kafka.common.security.auth.KafkaPrincipal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Allows configuring generic quotas for a broker independent of users and clients.
@@ -141,16 +141,20 @@ public class StaticQuotaCallback implements ClientQuotaCallback {
             }
         }
 
-        private long checkDiskUsage() throws IOException {
-            try {
-                Path folder = Paths.get(logDirs);
-                return Files.walk(folder)
-                        .filter(p -> p.toFile().isFile())
-                        .mapToLong(p -> p.toFile().length())
-                        .sum();
-            } catch (NoSuchFileException e) {
-                return 0;
+        private long checkDiskUsage() throws IOException, InterruptedException {
+            String dirs = String.join(" ", logDirs.split(","));
+            Process process = Runtime.getRuntime().exec(String.format("du -s -B1 %s", dirs));
+
+            process.waitFor();
+
+            BufferedReader buf = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            List<String> stdoutLines = new ArrayList<>();
+            String line = "";
+            while((line = buf.readLine()) != null) {
+                stdoutLines.add(line);
             }
+
+            return stdoutLines.stream().mapToLong(l -> Long.parseLong(l.split("\\s+")[0])).sum();
         }
     }
 }

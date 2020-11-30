@@ -4,13 +4,16 @@
  */
 package org.apache.kafka.server.quota;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -142,19 +145,19 @@ public class StaticQuotaCallback implements ClientQuotaCallback {
         }
 
         private long checkDiskUsage() throws IOException, InterruptedException {
-            String dirs = String.join(" ", logDirs.split(","));
-            Process process = Runtime.getRuntime().exec(String.format("du -s -B1 %s", dirs));
-
-            process.waitFor();
-
-            BufferedReader buf = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            List<String> stdoutLines = new ArrayList<>();
-            String line = "";
-            while((line = buf.readLine()) != null) {
-                stdoutLines.add(line);
+            List<String> dirList = Arrays.asList(logDirs.split(","));
+            Set<FileStore> fileStores = new HashSet<>();
+            for (String d : dirList) {
+                fileStores.add(Files.getFileStore(Paths.get(d)));
             }
 
-            return stdoutLines.stream().mapToLong(l -> Long.parseLong(l.split("\\s+")[0])).sum();
+            long totalUsed = 0;
+            for (FileStore store : fileStores) {
+                long used = store.getTotalSpace() - store.getUsableSpace();
+                totalUsed = totalUsed + used;
+            }
+
+            return totalUsed;
         }
     }
 }

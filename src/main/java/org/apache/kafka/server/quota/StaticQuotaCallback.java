@@ -4,22 +4,25 @@
  */
 package org.apache.kafka.server.quota;
 
+import java.io.IOException;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.metrics.Quota;
 import org.apache.kafka.common.security.auth.KafkaPrincipal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Allows configuring generic quotas for a broker independent of users and clients.
@@ -141,16 +144,20 @@ public class StaticQuotaCallback implements ClientQuotaCallback {
             }
         }
 
-        private long checkDiskUsage() throws IOException {
-            try {
-                Path folder = Paths.get(logDirs);
-                return Files.walk(folder)
-                        .filter(p -> p.toFile().isFile())
-                        .mapToLong(p -> p.toFile().length())
-                        .sum();
-            } catch (NoSuchFileException e) {
-                return 0;
+        private long checkDiskUsage() throws IOException, InterruptedException {
+            List<String> dirList = Arrays.asList(logDirs.split(","));
+            Set<FileStore> fileStores = new HashSet<>();
+            for (String d : dirList) {
+                fileStores.add(Files.getFileStore(Paths.get(d)));
             }
+
+            long totalUsed = 0;
+            for (FileStore store : fileStores) {
+                long used = store.getTotalSpace() - store.getUsableSpace();
+                totalUsed = totalUsed + used;
+            }
+
+            return totalUsed;
         }
     }
 }

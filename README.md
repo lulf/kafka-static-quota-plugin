@@ -15,11 +15,16 @@ producing messages at 10 MB/second, the second producer will be throttled at 30 
 To build the plugin:
 
 ```
-./gradlew shadowJar
+./gradlew jar
 ```
 
-Copy the resulting jar in `build/libs/kafka-static-quota-plugin-all.jar` into the Kafka classpath.
+Copy the resulting jar in `build/libs/kafka-static-quota-plugin-0.1.jar` into the Kafka classpath.
 
+Alternatively, you can publish to your local maven repository with:
+
+```
+./gradlew publishMavenJavaPublicationToMavenLocal
+```
 
 ## Configuring
 

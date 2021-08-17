@@ -1,4 +1,4 @@
-# *OBSOLETE*
+# *MOVED*
 
 The development have been moved to https://github.com/strimzi/kafka-quotas-plugin
 

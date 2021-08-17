@@ -1,4 +1,8 @@
-# Kafka Static Quota Plugin
+# *OBSOLETE*
+
+The development have been moved to https://github.com/strimzi/kafka-quotas-plugin
+
+## Kafka Static Quota Plugin
 
 This is a broker quota plugin for Apache Kafka to allow setting a per-broker limits statically in
 the broker configuration. 
